@@ -119,6 +119,14 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         entrypoints: string[],
         useContentHashing: boolean
     ): Promise<ProcessedEntries> {
+        cacheModified = invalidateStaleEntries(
+            cacheDisabled,
+            cacheLoaded,
+            cache,
+            entrypoints,
+            cacheModified
+        );
+
         const entryFiles: PathCacheEntry[] = await Promise.all(
             entrypoints.map(async (entry: string): Promise<PathCacheEntry> => {
                 try {
@@ -148,6 +156,31 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         }
 
         return { entriesToProcess, entryFiles };
+    }
+
+    function invalidateStaleEntries(
+        cacheDisabled: boolean,
+        cacheLoaded: boolean,
+        cache: CacheFile,
+        entrypoints: string[],
+        cacheModified: boolean
+    ): boolean {
+        let _cacheModified: boolean = cacheModified;
+
+        if (!cacheDisabled && cacheLoaded && Object.keys(cache.entries).length > 0) {
+            const existingEntries = new Set(entrypoints);
+            const staleEntries: string[] = Object.keys(cache.entries).filter(
+                (entry: string): boolean => !existingEntries.has(entry)
+            );
+
+            if (staleEntries.length > 0) {
+                for (const staleEntry of staleEntries) {
+                    delete cache.entries[staleEntry];
+                }
+                _cacheModified = true;
+            }
+        }
+        return _cacheModified;
     }
 
     function shouldGenerateEntry(
@@ -230,7 +263,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
             await Bun.write(tempFilePath, compressedData);
             await fs.rename(tempFilePath, cacheFilePath);
         } catch {
-            // Ignore cache write errors
+            return undefined;
         }
     }
 
