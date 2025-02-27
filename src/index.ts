@@ -9,6 +9,7 @@ interface CacheEntry {
     hash: string;
     mtime: number;
     content: string;
+    lastUsed: number;
 }
 
 interface CacheFile {
@@ -32,11 +33,13 @@ type Options = {
     useContentHashing?: boolean;
     cacheVersion?: string;
     parallelLimit?: number;
+    maxCacheEntries?: number;
 };
 
 const DEFAULT_CACHE_DIR = ".cache";
 const CACHE_VERSION = "1.0.0";
 const CACHE_FILENAME = "dts-cache.json";
+const DEFAULT_MAX_CACHE_ENTRIES = 1000;
 
 const dts = (options?: Options): import("bun").BunPlugin => {
     let cache: CacheFile = {
@@ -47,6 +50,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
     let cacheLoaded = false;
     let cacheModified = false;
     let cacheDisabled = options?.cacheDir === undefined || options?.cacheDir === false;
+    const maxCacheEntries = options?.maxCacheEntries ?? DEFAULT_MAX_CACHE_ENTRIES;
 
     return {
         name: "@amarislabs/bun-plugin-dts",
@@ -185,7 +189,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
 
     function shouldGenerateEntry(
         entry: string,
-        fileStats: Omit<CacheEntry, "content">,
+        fileStats: Omit<CacheEntry, "content" | "lastUsed">,
         useContentHashing: boolean
     ): boolean {
         if (cacheDisabled) return true;
@@ -193,9 +197,26 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         const cachedEntry: CacheEntry = cache.entries[entry];
         if (!cachedEntry) return true;
 
+        cachedEntry.lastUsed = Date.now();
+        cacheModified = true;
+
         return useContentHashing
             ? cachedEntry.hash !== fileStats.hash
             : cachedEntry.mtime !== fileStats.mtime;
+    }
+
+    function pruneCache() {
+        const entries = Object.entries(cache.entries);
+        if (entries.length <= maxCacheEntries) return;
+
+        entries.sort(([, a], [, b]) => (a.lastUsed || 0) - (b.lastUsed || 0));
+
+        const entriesToRemove = entries.length - maxCacheEntries;
+        for (let i = 0; i < entriesToRemove; i++) {
+            delete cache.entries[entries[i][0]];
+        }
+
+        cacheModified = true;
     }
 
     function generateDtsFiles(
@@ -240,6 +261,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
                         hash: fileStats[index].hash,
                         mtime: fileStats[index].mtime,
                         content,
+                        lastUsed: Date.now(),
                     };
                     cacheModified = true;
                 }
@@ -251,6 +273,10 @@ const dts = (options?: Options): import("bun").BunPlugin => {
                 await Bun.write(outFile, content);
             })
         );
+
+        if (!cacheDisabled) {
+            pruneCache();
+        }
     }
 
     async function writeCache(cacheFilePath: string): Promise<void> {
@@ -262,8 +288,11 @@ const dts = (options?: Options): import("bun").BunPlugin => {
             const compressedData = Bun.gzipSync(Buffer.from(cacheJson));
             await Bun.write(tempFilePath, compressedData);
             await fs.rename(tempFilePath, cacheFilePath);
-        } catch {
-            return undefined;
+        } catch (error) {
+            console.error(
+                "@amarislabs/bun-plugin-dts: Failed to write cache file",
+                error
+            );
         }
     }
 
