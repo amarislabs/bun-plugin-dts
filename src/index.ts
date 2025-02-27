@@ -5,30 +5,6 @@ import commonPathPrefix from "common-path-prefix";
 import { type EntryPointConfig, generateDtsBundle } from "dts-bundle-generator";
 import { getTsconfig } from "get-tsconfig";
 
-class LRUCache<K, V> {
-    private cache: Map<K, V> = new Map<K, V>();
-    private maxSize: number;
-
-    constructor(maxSize: number) {
-        this.maxSize = maxSize;
-    }
-
-    get(key: K): V | undefined {
-        if (!this.cache.has(key)) return undefined;
-        const value: NonNullable<V> = this.cache.get(key)!;
-        this.cache.delete(key);
-        this.cache.set(key, value);
-        return value;
-    }
-
-    set(key: K, value: V): void {
-        if (this.cache.size >= this.maxSize) {
-            this.cache.delete(this.cache.keys().next().value!);
-        }
-        this.cache.set(key, value);
-    }
-}
-
 interface CacheEntry {
     hash: string;
     mtime: number;
@@ -71,8 +47,6 @@ const dts = (options?: Options): import("bun").BunPlugin => {
     let cacheLoaded = false;
     let cacheModified = false;
     let cacheDisabled = options?.cacheDir === undefined || options?.cacheDir === false;
-
-    const memoCache = new LRUCache<string, unknown>(100);
 
     return {
         name: "@amarislabs/bun-plugin-dts",
@@ -210,10 +184,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         results: Map<string, string>,
         outDir: string
     ): Promise<void> {
-        const commonPrefix: string = await computeCommonPathPrefix(
-            entrypoints,
-            memoCache
-        );
+        const commonPrefix: string = await computeCommonPathPrefix(entrypoints);
 
         await Promise.all(
             entrypoints.map(async (entry: string, index: number): Promise<void> => {
@@ -253,25 +224,12 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         }
     }
 
-    async function computeCommonPathPrefix(
-        entrypoints: string[],
-        memoCache: LRUCache<string, unknown>
-    ): Promise<string> {
-        const commonPrefix: string = ((): string => {
-            const key: string = entrypoints.join("|");
-
-            if (!memoCache.get(key)) {
-                let prefix: string = commonPathPrefix(entrypoints);
-                if (!prefix || prefix === process.cwd()) {
-                    prefix = path.dirname(entrypoints[0]);
-                }
-                memoCache.set(key, prefix);
-            }
-
-            return memoCache.get(key) as string;
-        })();
-
-        return commonPrefix;
+    function computeCommonPathPrefix(entrypoints: string[]): string {
+        let prefix: string = commonPathPrefix(entrypoints);
+        if (!prefix || prefix === process.cwd()) {
+            prefix = path.dirname(entrypoints[0]);
+        }
+        return prefix;
     }
 };
 
