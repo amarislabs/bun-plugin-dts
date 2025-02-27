@@ -94,7 +94,14 @@ const dts = (options?: Options): import("bun").BunPlugin => {
             if (cacheDir) {
                 await fs.mkdir(cacheDir, { recursive: true });
 
-                const cacheContent: string = await Bun.file(cacheFilePath).text();
+                const compressedData = await Bun.file(cacheFilePath).arrayBuffer();
+                if (compressedData.byteLength === 0) {
+                    cache = { version: CACHE_VERSION, entries: {} };
+                    return;
+                }
+
+                const decompressedData = Bun.gunzipSync(new Uint8Array(compressedData));
+                const cacheContent: string = new TextDecoder().decode(decompressedData);
                 const loadedCache = JSON.parse(cacheContent) as CacheFile;
 
                 if (loadedCache.version === CACHE_VERSION) cache = loadedCache;
@@ -104,6 +111,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         } catch {
             cache = { version: CACHE_VERSION, entries: {} };
         }
+
         cacheLoaded = true;
     }
 
@@ -184,7 +192,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         results: Map<string, string>,
         outDir: string
     ): Promise<void> {
-        const commonPrefix: string = await computeCommonPathPrefix(entrypoints);
+        const commonPrefix: string = computeCommonPathPrefix(entrypoints);
 
         await Promise.all(
             entrypoints.map(async (entry: string, index: number): Promise<void> => {
@@ -217,7 +225,9 @@ const dts = (options?: Options): import("bun").BunPlugin => {
 
         try {
             const tempFilePath = `${cacheFilePath}.tmp`;
-            await fs.writeFile(tempFilePath, JSON.stringify(cache, null, 2));
+            const cacheJson = JSON.stringify(cache, null, 2);
+            const compressedData = Bun.gzipSync(Buffer.from(cacheJson));
+            await Bun.write(tempFilePath, compressedData);
             await fs.rename(tempFilePath, cacheFilePath);
         } catch {
             // Ignore cache write errors
