@@ -74,17 +74,10 @@ const dts = (options?: Options): import("bun").BunPlugin => {
             const entrypoints: string[] = [...build.config.entrypoints].sort();
             if (entrypoints.length === 0) return;
 
-            const { entriesToProcess, entryFiles } = await prepareEntries(
-                entrypoints,
-                useContentHashing
-            );
+            const { entriesToProcess, entryFiles } = await prepareEntries(entrypoints, useContentHashing);
             if (entriesToProcess.length === 0) return;
 
-            const results: Map<string, string> = generateDtsFiles(
-                entriesToProcess,
-                getTsconfig()?.path,
-                parallelLimit
-            );
+            const results: Map<string, string> = generateDtsFiles(entriesToProcess, getTsconfig()?.path, parallelLimit);
 
             await writeOutputFiles(entrypoints, entryFiles, results, outDir);
             await writeCache(cacheFilePath);
@@ -119,17 +112,8 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         cacheLoaded = true;
     }
 
-    async function prepareEntries(
-        entrypoints: string[],
-        useContentHashing: boolean
-    ): Promise<ProcessedEntries> {
-        cacheModified = invalidateStaleEntries(
-            cacheDisabled,
-            cacheLoaded,
-            cache,
-            entrypoints,
-            cacheModified
-        );
+    async function prepareEntries(entrypoints: string[], useContentHashing: boolean): Promise<ProcessedEntries> {
+        cacheModified = invalidateStaleEntries(cacheDisabled, cacheLoaded, cache, entrypoints, cacheModified);
 
         const entryFiles: PathCacheEntry[] = await Promise.all(
             entrypoints.map(async (entry: string): Promise<PathCacheEntry> => {
@@ -139,9 +123,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
 
                     if (useContentHashing && !cacheDisabled) {
                         const content: string = await Bun.file(entry).text();
-                        hash = new CryptoHasher("blake2b256")
-                            .update(content)
-                            .digest("hex");
+                        hash = new CryptoHasher("blake2b256").update(content).digest("hex");
                     }
                     return { path: entry, mtime: stats.mtimeMs, hash };
                 } catch {
@@ -200,9 +182,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
         cachedEntry.lastUsed = Date.now();
         cacheModified = true;
 
-        return useContentHashing
-            ? cachedEntry.hash !== fileStats.hash
-            : cachedEntry.mtime !== fileStats.mtime;
+        return useContentHashing ? cachedEntry.hash !== fileStats.hash : cachedEntry.mtime !== fileStats.mtime;
     }
 
     function pruneCache() {
@@ -266,9 +246,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
                     cacheModified = true;
                 }
 
-                await fs
-                    .mkdir(path.dirname(outFile), { recursive: true })
-                    .catch((): undefined => undefined);
+                await fs.mkdir(path.dirname(outFile), { recursive: true }).catch((): undefined => undefined);
 
                 await Bun.write(outFile, content);
             })
@@ -289,10 +267,7 @@ const dts = (options?: Options): import("bun").BunPlugin => {
             await Bun.write(tempFilePath, compressedData);
             await fs.rename(tempFilePath, cacheFilePath);
         } catch (error) {
-            console.error(
-                "@amarislabs/bun-plugin-dts: Failed to write cache file",
-                error
-            );
+            console.error("@amarislabs/bun-plugin-dts: Failed to write cache file", error);
         }
     }
 
