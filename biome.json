@@ -6,7 +6,7 @@
         "indentStyle": "space",
         "indentWidth": 4,
         "lineEnding": "lf",
-        "lineWidth": 90,
+        "lineWidth": 120,
         "attributePosition": "multiline"
     },
     "organizeImports": {
@@ -25,7 +25,13 @@
                 "noForEach": "error",
                 "noUselessSwitchCase": "error",
                 "useFlatMap": "error",
-                "useSimplifiedLogicExpression": "off"
+                "useSimplifiedLogicExpression": "off",
+                "noExcessiveCognitiveComplexity": {
+                    "level": "warn",
+                    "options": {
+                        "maxAllowedComplexity": 30
+                    }
+                }
             },
             "correctness": {
                 "noUndeclaredDependencies": "off",
@@ -100,7 +106,7 @@
             "indentWidth": 4,
             "jsxQuoteStyle": "double",
             "lineEnding": "lf",
-            "lineWidth": 90,
+            "lineWidth": 120,
             "quoteProperties": "asNeeded",
             "quoteStyle": "double",
             "semicolons": "always",
