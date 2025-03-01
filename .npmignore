@@ -67,3 +67,5 @@ tests
 scripts
 tsconfig.json
 .tmp
+SECURITY.md
+CODE_OF_CONDUCT.md
