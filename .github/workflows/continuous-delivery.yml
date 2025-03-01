@@ -8,7 +8,7 @@ on:
 jobs:
   latest:
     name: Latest
-    if: ${{contains(github.event.head_commit.message, format('chore(release){0} logger@', ':'))}}
+    if: ${{contains(github.event.head_commit.message, format('chore(release){0} bun-plugin-dts@', ':'))}}
     runs-on: ubuntu-latest
     permissions:
       contents: read
