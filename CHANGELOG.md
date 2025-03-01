@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.0.1](https://github.com/amarislabs/bun-plugin-dts/compare/v1.0.0...v1.0.1) (2025-03-01)
+
+## <!-- 5 -->Styling
+
+- Apply minor formatting and clean up in src/index.ts ([c3a29e0](https://github.com/amarislabs/bun-plugin-dts/commit/c3a29e061f77fa09ca09d3442d73abe9f1b28a04))
+
+## <!-- 7 -->Miscellaneous Tasks
+
+- **biome:** Lengthen max allowed complexity loc ([5e0964b](https://github.com/amarislabs/bun-plugin-dts/commit/5e0964b144174c05b51922a68b7cd20a06fd12da))
+- Remove cache dir from dts plugin and fix typo in ci file ([d0f1252](https://github.com/amarislabs/bun-plugin-dts/commit/d0f1252a454af2a826e42c84420fe25062227d00))
+
 # [1.0.0](https://github.com/amarislabs/bun-plugin-dts/tree/v1.0.0) (2025-02-27)
 
 ## <!-- 0 -->Features
