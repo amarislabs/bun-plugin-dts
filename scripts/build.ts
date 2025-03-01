@@ -13,11 +13,7 @@ const defaultBuildConfig: BuildConfig = {
 
 await Bun.build({
     ...defaultBuildConfig,
-    plugins: [
-        dts({
-            cacheDir: ".cache",
-        }),
-    ],
+    plugins: [dts()],
     format: "esm",
     naming: "[dir]/[name].js",
 });
